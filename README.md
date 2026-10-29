@@ -19,8 +19,10 @@ loopback only and have no nginx vhost.
   tuejon pins the two project names, their directories and env files (inline deployments
   override any `.doco-cd.yml` in this repo). A PR cannot add a project or redeploy another
   Compose project by name.
-- Image pruning and destroy are off. Removing a service from a Compose file removes its
-  container (`remove_orphans`) inside that project only.
+- Destroy is off. Removing a service from a Compose file removes its container
+  (`remove_orphans`) inside that project only. Image pruning is *configured* off but doco-cd
+  ignores that (see Kill switch notes below); the socket proxy refuses the forced image delete,
+  so an image change shows one failed deploy and one forced retry before it settles.
 
 ### What still has to be trusted
 
@@ -53,8 +55,11 @@ can redeploy at an unchanged commit, so every edit is logged in the workbench ev
 
 - **Kill switch:** `sudo /opt/gitops-pilot/teardown.sh stop` stops the socket proxy first (no
   further Docker API calls), then doco-cd. The canaries keep running.
-- **Freeze rollouts but keep recovery off too:** set `pause: true` and `reconciliation: false`
-  on the deployments in the host `poll.yml`, then restart doco-cd.
+- **Freeze rollouts:** set `pause: true` on the deployments in the host `poll.yml`, then restart
+  doco-cd. Do not rely on `reconciliation: false` or `prune_images: false` there: doco-cd
+  v0.131.0 re-applies defaults to inline deployments after decoding, so every default-true
+  boolean set to `false` in `poll.yml` silently becomes `true` again (`poll_config.go`,
+  `defaults.Set` in `Validate`). To stop recovery as well, use the kill switch.
 - **Tear down:** `sudo /opt/gitops-pilot/teardown.sh remove` removes the canary and controller
   containers and networks by Compose project label. It leaves images, the
   `gitops-pilot-cd_data` volume and `/opt/gitops-pilot` for manual removal and never prunes
