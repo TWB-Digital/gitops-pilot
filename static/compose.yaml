@@ -22,8 +22,8 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
-      interval: 60s
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/s7-missing"]
+      interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
