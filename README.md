@@ -62,3 +62,10 @@ can redeploy at an unchanged commit, so every edit is logged in the workbench ev
 
 Runtime state, measurements and the go/no-go record live in the workbench under
 `evidence/2026-10-29-gitops-p2a-pull-pilot/`.
+
+## Pilot scenarios
+
+Each scenario is one merged PR or one host action, logged with merge time, deploy time and
+container start times in the workbench evidence: docs-only commit (no recreate expected), image
+bump, site change, revert, controller restart, manual stop/remove drift, failing health check,
+unpullable image.
