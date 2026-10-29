@@ -1,39 +1,42 @@
 # Live copy: tuejon /opt/gitops-pilot/doco-cd/compose.yml, project gitops-pilot-cd.
 # Standalone install (not self-updating): updated by hand after review.
+# Frozen during the pilot: any edit here, in poll.yml or in /opt/gitops-pilot/env is
+# recorded in the workbench evidence log, because it can redeploy at an unchanged commit.
 name: gitops-pilot-cd
 services:
+  # Enforcing Docker API filter: per-method path allowlists, bind sources limited to
+  # doco-cd's own data volume. No exec, build, image/volume/network deletion or prune.
   socket-proxy:
-    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    image: wollomatic/socket-proxy:1.13.2@sha256:ff95d6ff6c27853005ef85eb8f4ab5923dc3d2f1e055f98fb6aeeaceec3fe848
     restart: unless-stopped
-    environment:
-      PING: 1
-      VERSION: 1
-      INFO: 1
-      EVENTS: 1
-      CONTAINERS: 1
-      IMAGES: 1
-      NETWORKS: 1
-      VOLUMES: 1
-      DISTRIBUTION: 1
-      POST: 1
-      DELETE: 1
-      AUTH: 0
-      BUILD: 0
-      COMMIT: 0
-      CONFIGS: 0
-      EXEC: 0
-      NODES: 0
-      PLUGINS: 0
-      SECRETS: 0
-      SERVICES: 0
-      SESSION: 0
-      SWARM: 0
-      SYSTEM: 0
-      TASKS: 0
+    group_add: ["112"]  # tuejon docker group, for /var/run/docker.sock
+    command:
+      - '-loglevel=INFO'
+      - '-listenip=0.0.0.0'
+      - '-allowfrom=doco-cd'
+      - '-allowhealthcheck'
+      - '-watchdoginterval=300'
+      - '-stoponwatchdog'
+      - '-shutdowngracetime=5'
+      - '-allowHEAD=^(/v1\.[0-9]+)?/_ping$$'
+      - '-allowGET=^(/v1\.[0-9]+)?/(_ping|version|info|events|containers/json|containers/[^/]+/json|images/json|images/.+/json|distribution/.+/json|networks|networks/[^/]+|volumes|volumes/[^/]+)$$'
+      - '-allowPOST=^(/v1\.[0-9]+)?/(images/create|containers/create|containers/[^/]+/(start|stop|restart|kill|rename|wait)|networks/create|networks/[^/]+/(connect|disconnect)|volumes/create)$$'
+      - '-allowDELETE=^(/v1\.[0-9]+)?/containers/[^/]+$$'
+      - '-allowbindmountfrom=/var/lib/docker/volumes/gitops-pilot-cd_data/_data'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [cd]
-    mem_limit: 64m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 32m
+    cpus: 0.25
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "./healthcheck"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
     logging:
       driver: json-file
       options: {max-size: "5m", max-file: "2"}
@@ -51,6 +54,8 @@ services:
       POLL_CONFIG_FILE: /config/poll.yml
       SCHEDULER_ENABLED: "false"
       METRICS_PORT: 9120
+      MAX_CONCURRENT_DEPLOYMENTS: 1
+      MAX_CONCURRENT_PREDEPLOYMENTS: 1
     ports:
       - "127.0.0.1:9191:9120"
     volumes:
@@ -61,6 +66,8 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 256
     healthcheck:
       start_period: 15s
       interval: 60s
