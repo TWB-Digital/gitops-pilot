@@ -80,7 +80,12 @@ services:
       twb.owner: gitops-p2a-pull-pilot-tuejon
 
 networks:
-  cd: {}
+  # tuejon's Docker default address pools are exhausted; pin a small free subnet
+  # (10.91.0.0/24 is kundenberichte's).
+  cd:
+    ipam:
+      config:
+        - subnet: 10.91.1.0/28
 
 volumes:
   data: {}
