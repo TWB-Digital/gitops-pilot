@@ -1,0 +1,29 @@
+# Live copy: tuejon /opt/gitops-pilot/doco-cd/poll.yml (root-owned, edited only by hand).
+# The host, not the repository, decides which Compose projects doco-cd may manage:
+# inline deployments override any .doco-cd.yml in the repository.
+- url: https://github.com/TWB-Digital/gitops-pilot.git
+  reference: main
+  interval: 5m
+  deployments:
+    - name: gitops-pilot-whoami
+      working_dir: whoami
+      compose_files: [compose.yaml]
+      env_files: []
+      remove_orphans: true
+      prune_images: false
+      destroy: false
+      timeout: 3m
+      reconciliation:
+        enabled: true
+        events: [unhealthy]
+    - name: gitops-pilot-static
+      working_dir: static
+      compose_files: [compose.yaml]
+      env_files: [/opt/gitops-pilot/env/static.env]
+      remove_orphans: true
+      prune_images: false
+      destroy: false
+      timeout: 3m
+      reconciliation:
+        enabled: true
+        events: [unhealthy]

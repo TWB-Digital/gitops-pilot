@@ -1,0 +1,32 @@
+# Canary 2: config rollout (repo-tracked site/) plus a value from a host-only env file.
+name: gitops-pilot-static
+services:
+  web:
+    image: busybox:1.37.0-musl@sha256:8fddc201ee902ceabe7f766612d597201b70592e95451c9410f446440ef4786f
+    command: ["httpd", "-f", "-v", "-p", "8080", "-h", "/www"]
+    user: "65534:65534"
+    restart: unless-stopped
+    environment:
+      # Dummy secret-shaped value; it lives only in the host env file, never in Git.
+      PILOT_HOST_SECRET: ${PILOT_HOST_SECRET:?set in the host env file}
+    ports:
+      - "127.0.0.1:8192:8080"
+    volumes:
+      - ./site:/www:ro
+    mem_limit: 16m
+    cpus: 0.25
+    pids_limit: 32
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+    labels:
+      twb.owner: gitops-p2a-pull-pilot-tuejon
